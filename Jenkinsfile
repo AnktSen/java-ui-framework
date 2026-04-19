@@ -1,21 +1,23 @@
 pipeline {
     agent {
-        docker {
-            image 'maven:3.9.6-eclipse-temurin-17' 
-            // We use -u root to ensure the container has permission to write reports to your workspace
-            args '-v /tmp:/tmp -u root' 
+        dockerfile {
+            filename 'Dockerfile'
+            // This is the fix: It tells Jenkins to use a Linux-style path internally
+            customWorkspace '/app'
+            // -u root ensures permissions are high enough to write reports
+            args '-u root'
         }
     }    
+    
     triggers {
         githubPush()
     }
+    
     stages {
         stage('Checkout & Setup Name') {
             steps {
-                checkout scm                
                 script {
                     try {
-                        // Use 'sh' instead of 'bat' inside Docker
                         String commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
                         String commitMsg = sh(script: "git log -1 --pretty=%s", returnStdout: true).trim()
                         
@@ -33,7 +35,7 @@ pipeline {
         
         stage('Run Automation Tests') {
             steps {
-                // Use 'sh' for Linux-based Docker containers
+                // Inside the Docker container, it's a Linux environment
                 sh 'mvn clean test -Dheadless=true'
             }
         }
