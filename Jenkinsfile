@@ -8,24 +8,30 @@ pipeline {
     stages {
         stage('Docker Build') {
             steps {
-                // Build the image using the Dockerfile in the current directory
+                // Building the image locally on the Windows host
                 bat 'docker build -t automation-framework .'
             }
         }
         
         stage('Run Automation Tests in Docker') {
             steps {
-                /* We run the container and mount the current workspace 
-                   to a Linux path /app inside the container.
+                /* MODIFICATION: 
+                   1. We mount the %WORKSPACE% to /app for your code.
+                   2. We mount the Windows Maven Cache (%USERPROFILE%\.m2) to the 
+                      container's Maven folder (/root/.m2) to save download time.
                 */
-                bat 'docker run --rm -v "%WORKSPACE%":/app automation-framework'
+                bat '''
+                docker run --rm ^
+                -v "%WORKSPACE%":/app ^
+                -v "%USERPROFILE%\\.m2":/root/.m2 ^
+                automation-framework
+                '''
             }
         }
     }
     
     post {
         always {
-            // Jenkins will look for these in the Windows workspace after the container finishes
             archiveArtifacts artifacts: 'target/SparkReport/ExtentReport.html', allowEmptyArchive: true
             junit '**/target/surefire-reports/*.xml'
         }
