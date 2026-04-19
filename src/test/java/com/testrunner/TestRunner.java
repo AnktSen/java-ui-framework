@@ -26,17 +26,21 @@ public class TestRunner extends AbstractTestNGCucumberTests {
         return super.scenarios();
     }*/
    
-   @AfterSuite
-   public void reportGeneration() throws IOException {
-       // Specify the exact path where your report is generated
-       File htmlFile = new File("target/SparkReport/ExtentReport.html");
-       
-       // Check if the file exists before trying to open it
-       if (htmlFile.exists()) {
-           // This command opens the file in your default system browser
-           Desktop.getDesktop().browse(htmlFile.toURI());
-       } else {
-           System.out.println("Extent Report file not found at: " + htmlFile.getAbsolutePath());
-       }
-   }
+	@AfterSuite
+	public void reportGeneration() throws IOException {
+	    File htmlFile = new File("target/SparkReport/ExtentReport.html");
+	    
+	    if (htmlFile.exists()) {
+	        // Check if the environment has a display (Monitor)
+	        if (!java.awt.GraphicsEnvironment.isHeadless()) {
+	            System.out.println("Opening Extent Report in Browser...");
+	            Desktop.getDesktop().browse(htmlFile.toURI());
+	        } else {
+	            // This will print in your Jenkins/Docker logs instead of crashing
+	            System.out.println("Headless environment detected. Extent Report generated at: " + htmlFile.getAbsolutePath());
+	        }
+	    } else {
+	        System.out.println("Extent Report file not found at: " + htmlFile.getAbsolutePath());
+	    }
+	}
 }

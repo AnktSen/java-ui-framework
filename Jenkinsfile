@@ -1,32 +1,24 @@
 pipeline {
-    agent any    
-    
-    // This block enables the pipeline to listen for GitHub Webhook triggers
+    agent {
+        docker {
+            image 'maven:3.9.6-eclipse-temurin-17' 
+            // We use -u root to ensure the container has permission to write reports to your workspace
+            args '-v /tmp:/tmp -u root' 
+        }
+    }    
     triggers {
         githubPush()
     }
-
-    tools {
-        maven 'Maven 3.9'
-        jdk 'JDK 17' 
-    }
-    
     stages {
         stage('Checkout & Setup Name') {
             steps {
-                // 1. Pull the code
-                checkout scm
-                
+                checkout scm                
                 script {
                     try {
-                        // 2. Fetch Git info
-                        // Using --pretty=%s to get ONLY the subject line (concise)
-                        // Using @echo off to prevent the command itself from appearing in the string
-                        String commitHash = bat(script: "@echo off & git rev-parse --short HEAD", returnStdout: true).trim()
-                        String commitMsg = bat(script: "@echo off & git log -1 --pretty=%s", returnStdout: true).trim()
+                        // Use 'sh' instead of 'bat' inside Docker
+                        String commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                        String commitMsg = sh(script: "git log -1 --pretty=%s", returnStdout: true).trim()
                         
-                        // 3. Set the display name
-                        // We take only the first 50 characters to keep the UI neat
                         String shortMsg = commitMsg.take(50)
                         currentBuild.displayName = "#${env.BUILD_NUMBER} - ${shortMsg} (${commitHash})"
                         
@@ -41,17 +33,16 @@ pipeline {
         
         stage('Run Automation Tests') {
             steps {
-                // Ensure headless is true for Jenkins/Server environments
-                bat 'mvn clean test -Dheadless=true'
+                // Use 'sh' for Linux-based Docker containers
+                sh 'mvn clean test -Dheadless=true'
             }
         }
     }
     
     post {
-    always {
-        // Correct path to your Extent Report
-        archiveArtifacts artifacts: 'target/SparkReport/ExtentReport.html', allowEmptyArchive: true
-        junit '**/target/surefire-reports/*.xml'
+        always {
+            archiveArtifacts artifacts: 'target/SparkReport/ExtentReport.html', allowEmptyArchive: true
+            junit '**/target/surefire-reports/*.xml'
+        }
     }
-}
 }
