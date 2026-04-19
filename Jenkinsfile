@@ -1,48 +1,31 @@
 pipeline {
-    agent {
-        dockerfile {
-            filename 'Dockerfile'
-            // This is the fix: It tells Jenkins to use a Linux-style path internally
-            customWorkspace '/app'
-            // -u root ensures permissions are high enough to write reports
-            args '-u root'
-        }
-    }    
+    agent any 
     
     triggers {
         githubPush()
     }
     
     stages {
-        stage('Checkout & Setup Name') {
+        stage('Docker Build') {
             steps {
-                script {
-                    try {
-                        String commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                        String commitMsg = sh(script: "git log -1 --pretty=%s", returnStdout: true).trim()
-                        
-                        String shortMsg = commitMsg.take(50)
-                        currentBuild.displayName = "#${env.BUILD_NUMBER} - ${shortMsg} (${commitHash})"
-                        
-                        echo "Successfully updated build name to: ${currentBuild.displayName}"
-                    } catch (Exception e) {
-                        echo "Could not update build name. Error: ${e.message}"
-                        currentBuild.displayName = "#${env.BUILD_NUMBER} - Git Info Error"
-                    }
-                }
+                // Build the image using the Dockerfile in the current directory
+                bat 'docker build -t automation-framework .'
             }
-        }        
+        }
         
-        stage('Run Automation Tests') {
+        stage('Run Automation Tests in Docker') {
             steps {
-                // Inside the Docker container, it's a Linux environment
-                sh 'mvn clean test -Dheadless=true'
+                /* We run the container and mount the current workspace 
+                   to a Linux path /app inside the container.
+                */
+                bat 'docker run --rm -v "%WORKSPACE%":/app automation-framework'
             }
         }
     }
     
     post {
         always {
+            // Jenkins will look for these in the Windows workspace after the container finishes
             archiveArtifacts artifacts: 'target/SparkReport/ExtentReport.html', allowEmptyArchive: true
             junit '**/target/surefire-reports/*.xml'
         }
