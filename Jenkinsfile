@@ -48,10 +48,10 @@ pipeline {
     }
     
     post {
-        always {
-            // This will help you find the reports in Jenkins after the run
-            junit '**/target/surefire-reports/*.xml'
-            archiveArtifacts artifacts: 'target/*.html', allowEmptyArchive: true
-        }
+    always {
+        // Correct path to your Extent Report
+        archiveArtifacts artifacts: 'target/SparkReport/ExtentReport.html', allowEmptyArchive: true
+        junit '**/target/surefire-reports/*.xml'
     }
+}
 }
